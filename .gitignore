@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+*.db
+*.db-journal
+rosters/*
+!rosters/Test_25_Racers.json
+.venv/
+venv/
+*.egg-info/

@@ -1,0 +1,32 @@
+{
+  "type": "pinewood-roster",
+  "version": 1,
+  "name": "Test 25 Racers",
+  "racers": [
+    {"name": "Lightning", "car_number": 101},
+    {"name": "Thunderbolt", "car_number": 102},
+    {"name": "Blue Comet", "car_number": 103},
+    {"name": "Red Rocket", "car_number": 104},
+    {"name": "Green Machine", "car_number": 105},
+    {"name": "Silver Streak", "car_number": 106},
+    {"name": "Midnight Flyer", "car_number": 107},
+    {"name": "Turbo Tiger", "car_number": 108},
+    {"name": "Speed Demon", "car_number": 109},
+    {"name": "Wild Wedge", "car_number": 110},
+    {"name": "Black Arrow", "car_number": 111},
+    {"name": "Golden Bullet", "car_number": 112},
+    {"name": "Crimson Flash", "car_number": 113},
+    {"name": "Sonic Boom", "car_number": 114},
+    {"name": "Nitro Nugget", "car_number": 115},
+    {"name": "Purple Rain", "car_number": 116},
+    {"name": "Orange Crush", "car_number": 117},
+    {"name": "White Lightning", "car_number": 118},
+    {"name": "Blaze Runner", "car_number": 119},
+    {"name": "Rocket Racer", "car_number": 120},
+    {"name": "Iron Wedge", "car_number": 121},
+    {"name": "Cobra Strike", "car_number": 122},
+    {"name": "Shadow Dash", "car_number": 123},
+    {"name": "Velocity", "car_number": 124},
+    {"name": "Final Lap", "car_number": 125}
+  ]
+}

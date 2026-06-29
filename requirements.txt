@@ -1,0 +1,5 @@
+# Core (works on dev machine and Pi)
+pygame-ce>=2.5.0
+
+# On the Raspberry Pi, ALSO install the hardware deps:
+#   pip install -r requirements-pi.txt

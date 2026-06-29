@@ -1,0 +1,5 @@
+# Raspberry Pi hardware backend (install on the Pi only).
+# gpiozero is the high-level GPIO API; lgpio is the modern pin factory
+# used on Raspberry Pi OS Bookworm (Pi 4 / Pi 5).
+gpiozero>=2.0
+lgpio>=0.2.2.0

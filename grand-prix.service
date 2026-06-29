@@ -1,0 +1,37 @@
+# systemd unit to launch the derby app fullscreen on boot.
+#
+# This version targets Raspberry Pi OS *Lite* (no desktop): it renders straight
+# to the HDMI display via SDL's KMSDRM driver, on virtual terminal tty1.
+#
+# Install:
+#   sudo cp grand-prix.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now grand-prix.service
+#
+# Adjust User= and the paths to match your setup.  The user must be in the
+# video, render and input groups (the install.sh script adds them).
+#
+# Running on a FULL desktop instead?  Remove SDL_VIDEODRIVER and the tty lines,
+# set Environment=DISPLAY=:0, and change the target to graphical.target.
+
+[Unit]
+Description=Grand Prix RPi pinewood derby
+After=multi-user.target
+Conflicts=getty@tty1.service
+
+[Service]
+User=pi
+SupplementaryGroups=video render input tty gpio
+WorkingDirectory=/home/pi/grand-prix-rpi
+Environment=SDL_VIDEODRIVER=kmsdrm
+Environment=SDL_AUDIODRIVER=dummy
+# Own tty1 so KMSDRM can take the display and read the keyboard.
+TTYPath=/dev/tty1
+StandardInput=tty
+StandardOutput=tty
+ExecStart=/home/pi/grand-prix-rpi/.venv/bin/python /home/pi/grand-prix-rpi/main.py
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
