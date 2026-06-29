@@ -267,3 +267,7 @@ python3 tests/smoke_app.py
    champion comes straight from the qualifying standings.
 5. **Standings** shows live rankings anytime. **Reset Event** clears heats and
    results but keeps your roster.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
