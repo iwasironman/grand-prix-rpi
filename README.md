@@ -270,4 +270,5 @@ python3 tests/smoke_app.py
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+GNU General Public License v3.0 — see [LICENSE](LICENSE).
+Copyright (C) 2026 Steven Southwell.
