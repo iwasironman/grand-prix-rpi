@@ -24,6 +24,8 @@ User=pi
 SupplementaryGroups=video render input tty gpio
 WorkingDirectory=/home/pi/grand-prix-rpi
 Environment=SDL_VIDEODRIVER=kmsdrm
+# Audio is muted by default. To use the countdown sound (countdown.sound=true),
+# remove the next line so SDL can open the real audio device.
 Environment=SDL_AUDIODRIVER=dummy
 # Own tty1 so KMSDRM can take the display and read the keyboard.
 TTYPath=/dev/tty1

@@ -46,6 +46,13 @@ green_lights = 2          # number of GREEN bulbs at the bottom that light on go
 stage_interval_s = 0.6    # time each amber bulb stays lit before the next
 green_hold_s = 1.0        # how long GREEN shows after the gate releases
 
+# Countdown sound: a tone on each amber + a higher GO tone on green (original,
+# synthesized). Needs working audio out (see README); the boot service mutes
+# audio by default, so enabling this also means un-muting it there.
+sound = true
+amber_tone_hz = 444.44       # pitch of each amber beep
+go_tone_hz = 888.88         # pitch of the GO beep
+
 [hardware]
 # backend: "auto" picks gpiozero on a Pi, otherwise the keyboard mock.
 #   "mock" forces keyboard simulation (good for development on a laptop).

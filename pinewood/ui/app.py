@@ -24,6 +24,7 @@ from enum import Enum, auto
 
 import pygame
 
+from ..audio import Beeper
 from ..config import Config
 from ..db import Database
 from ..hardware import create_backend
@@ -98,6 +99,14 @@ class App:
         except Exception:
             pass
 
+        self.beeper = Beeper(
+            enabled=cfg.countdown.sound,
+            amber_hz=cfg.countdown.amber_tone_hz,
+            go_hz=cfg.countdown.go_tone_hz,
+            amber_ms=cfg.countdown.stage_interval_s * 1000,   # hold like the light
+            go_ms=cfg.countdown.green_hold_s * 1000,
+        )
+
         self.screen_state = Screen.MENU
         self.menu_idx = 0
         self.running = True
@@ -119,6 +128,8 @@ class App:
         # race state
         self.controller: RaceController | None = None
         self.cur_heat: Heat | None = None
+        self._ambers_beeped = 0          # countdown beeps already played
+        self._go_beeped = False
         self.cur_phase = QUALIFYING
         self._results_saved = False
         self._single_heat_mode = False   # re-running one heat, then return
@@ -590,6 +601,8 @@ class App:
         self.cur_heat = heat
         self.controller = RaceController(self.cfg, self.hw, heat)
         self._results_saved = False
+        self._ambers_beeped = 0
+        self._go_beeped = False
         self._msg = ""
 
     def _finish_current_heat(self) -> None:
@@ -627,6 +640,21 @@ class App:
     def _update(self) -> None:
         if self.screen_state is Screen.RACE and self.controller is not None:
             self.controller.update()
+            self._update_countdown_sound()
+
+    def _update_countdown_sound(self) -> None:
+        """Beep on each amber as it lights, and a GO tone when green appears."""
+        ctrl = self.controller
+        if ctrl is None:
+            return
+        if ctrl.state is RaceState.COUNTDOWN:
+            lit = ctrl.amber_stages_lit()
+            while self._ambers_beeped < lit:
+                self.beeper.amber()
+                self._ambers_beeped += 1
+        if ctrl.green_lit() and not self._go_beeped:
+            self.beeper.go()
+            self._go_beeped = True
 
     # ======================================================================
     #  Draw

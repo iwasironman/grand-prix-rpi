@@ -52,6 +52,9 @@ class CountdownCfg:
     green_lights: int = 2
     stage_interval_s: float = 0.6
     green_hold_s: float = 1.0
+    sound: bool = False
+    amber_tone_hz: float = 600.0
+    go_tone_hz: float = 1050.0
 
 
 @dataclass

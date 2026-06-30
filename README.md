@@ -149,6 +149,29 @@ To run on a **full desktop** instead of the console, see the comment block in
 the bundled `grand-prix.service` (drop `SDL_VIDEODRIVER`, set `DISPLAY=:0`,
 target `graphical.target`).
 
+## Countdown sound (optional)
+
+The light tree can play an original synthesized beep on each amber and a higher
+**GO** tone on green (tones generated at runtime — no audio files). Enable it in
+`config.toml`:
+
+```toml
+[countdown]
+sound = true
+amber_tone_hz = 600
+go_tone_hz = 1050
+```
+
+To actually hear it on the Pi, two things:
+1. The boot service **mutes audio** (`Environment=SDL_AUDIODRIVER=dummy`). Remove
+   that line from `/etc/systemd/system/grand-prix.service`, then
+   `sudo systemctl daemon-reload && sudo systemctl restart grand-prix.service`.
+2. Pick/route an output the Pi can play to — HDMI (TV speakers) or the 3.5 mm
+   jack: `sudo raspi-config` → *System Options → Audio*, and check levels with
+   `alsamixer`. You'll need a speaker or a TV that plays HDMI audio.
+
+If audio can't initialize, the app just runs silently — no errors.
+
 ## Develop on a laptop (no Pi / no hardware)
 
 ```bash
