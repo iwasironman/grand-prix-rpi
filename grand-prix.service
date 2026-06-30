@@ -18,6 +18,8 @@
 Description=Grand Prix RPi pinewood derby
 After=multi-user.target
 Conflicts=getty@tty1.service
+# When the app exits (Quit / clean stop), bring the tty1 login prompt back.
+OnSuccess=getty@tty1.service
 
 [Service]
 User=pi

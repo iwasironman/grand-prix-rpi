@@ -37,6 +37,7 @@ if [ "$AUTOSTART" = "1" ]; then
 Description=Grand Prix RPi pinewood derby
 After=multi-user.target
 Conflicts=getty@tty1.service
+OnSuccess=getty@tty1.service
 
 [Service]
 User=$TARGET_USER
