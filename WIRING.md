@@ -17,9 +17,11 @@ servo, and the wireless keyboard as the only control. Timing uses IR
 - **Start mode `sensor`** — a person releases the cars on green; the **first**
   start-line beam to break starts the shared clock (`config.toml` →
   `start_mode = "sensor"`).
-- **`finish_active_low = false`** — break-beam output is LOW while the beam is
-  intact and goes HIGH when a car breaks it (true for Adafruit 2167-style
-  receivers). For reflective LM393 modules instead, set this `true`.
+- **`finish_active_low = true`** — with the Pi's internal pull-up on, the
+  break-beam signal sits HIGH while the beam is intact and is pulled LOW when a
+  car breaks it, so the trip is the HIGH→LOW edge (verified on Adafruit
+  2167-style receivers). Set this `false` only for sensors whose output goes
+  HIGH on detection.
 - **No servo, no physical button** — `SPACE` on the keyboard starts/ends races.
   (Re-enable either via `config.toml`; see the bottom of this doc.)
 

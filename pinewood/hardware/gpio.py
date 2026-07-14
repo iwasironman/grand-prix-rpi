@@ -88,8 +88,11 @@ class GpioBackend:
     def _make_sensor(self, pin: int, handler) -> "DigitalInputDevice":
         """Attach a handler on the configured trip edge (shared polarity).
 
-        finish_active_low == true  -> trip on the LOW edge  (reflective modules)
-        finish_active_low == false -> trip on the HIGH edge (break-beam, e.g. 2167)
+        finish_active_low == true  -> trip on the HIGH->LOW edge (break-beam,
+                                      e.g. 2167: HIGH while intact, pulled LOW on
+                                      break -- verified)
+        finish_active_low == false -> trip on the LOW->HIGH edge (sensors that
+                                      drive the pin HIGH on detection)
         """
         dev = DigitalInputDevice(pin, pull_up=True, bounce_time=0.005)
         if self.cfg.finish_active_low:

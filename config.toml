@@ -91,14 +91,15 @@ button_pull_up = true     # button wired to GND with internal pull-up (recommend
 # List MUST have exactly `race.lanes` entries, in lane order (lane 1 first).
 # The internal pull-up is always enabled; this flag only sets which edge counts
 # as a car crossing the line:
-#   true  -> finish event drives the pin LOW
-#            (reflective IR obstacle modules, e.g. LM393 boards: D0 = low on detect)
-#   false -> finish event drives the pin HIGH
-#            (through-beam receivers, e.g. Adafruit 2167: low while the beam is
-#             intact, high when the car breaks it)
+#   true  -> the trip is the HIGH->LOW edge
+#            (through-beam receivers, e.g. Adafruit 2167: line sits HIGH while the
+#             beam is intact and is pulled LOW when the car breaks it -- verified)
+#   false -> the trip is the LOW->HIGH edge
+#            (sensors that drive the pin HIGH on detection, e.g. some reflective
+#             modules)
 # Pin order is lane order, and lanes are named by color: Red, Blue, Green, Yellow.
 finish_pins = [5, 6, 13, 19]
-finish_active_low = false  # set false for Adafruit-style break-beam pairs
+finish_active_low = true   # true for Adafruit-style break-beam pairs
 
 [storage]
 database = "derby.db"     # SQLite file (created next to this config)
