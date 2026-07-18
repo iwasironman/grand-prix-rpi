@@ -154,6 +154,51 @@ class Database:
         self.conn.commit()
         return heats
 
+    def append_heats(self, phase: str, rows: list[list[int | None]]) -> list[Heat]:
+        """Add heats to a phase WITHOUT clearing existing heats or results.
+
+        New heats continue the phase's `seq` numbering, so they slot in after
+        everything already scheduled (and get picked up as pending). Used to
+        give late-entry racers catch-up heats mid-event.
+        """
+        base = self.conn.execute(
+            "SELECT COALESCE(MAX(seq), 0) AS m FROM heats WHERE phase = ?", (phase,)
+        ).fetchone()["m"]
+        heats: list[Heat] = []
+        for offset, lanes in enumerate(rows, start=1):
+            seq = base + offset
+            cur = self.conn.execute(
+                "INSERT INTO heats (phase, seq, completed) VALUES (?, ?, 0)",
+                (phase, seq),
+            )
+            hid = cur.lastrowid
+            for lane, rid in enumerate(lanes):
+                self.conn.execute(
+                    "INSERT INTO heat_lanes (heat_id, lane, racer_id) VALUES (?, ?, ?)",
+                    (hid, lane, rid),
+                )
+            heats.append(Heat(id=hid, phase=phase, seq=seq, lanes=list(lanes)))
+        self.conn.commit()
+        return heats
+
+    def scheduled_racer_ids(self, phase: str) -> set[int]:
+        """Racer ids that appear in at least one heat of `phase`."""
+        rows = self.conn.execute(
+            """SELECT DISTINCT hl.racer_id
+               FROM heat_lanes hl JOIN heats h ON h.id = hl.heat_id
+               WHERE h.phase = ? AND hl.racer_id IS NOT NULL""",
+            (phase,),
+        )
+        return {r["racer_id"] for r in rows}
+
+    def phase_has_results(self, phase: str) -> bool:
+        row = self.conn.execute(
+            """SELECT 1 FROM results r JOIN heats h ON h.id = r.heat_id
+               WHERE h.phase = ? LIMIT 1""",
+            (phase,),
+        ).fetchone()
+        return row is not None
+
     def get_heats(self, phase: str) -> list[Heat]:
         heats: list[Heat] = []
         for hrow in self.conn.execute(

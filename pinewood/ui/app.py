@@ -44,7 +44,12 @@ from ..roster import (
     roster_label,
     save_roster,
 )
-from ..scheduling import build_finals, build_schedule, verify_fairness
+from ..scheduling import (
+    build_finals,
+    build_late_entry,
+    build_schedule,
+    verify_fairness,
+)
 from . import theme as T
 
 
@@ -134,6 +139,7 @@ class App:
         self._results_saved = False
         self._single_heat_mode = False   # re-running one heat, then return
         self._sched_sel = 0              # selected heat on the schedule screen
+        self._confirm_rebuild = False    # armed after 1st B when results exist
 
         # scoring / scheduling / playoff settings (DB overrides config defaults)
         self.scoring = self.db.get_setting("scoring", cfg.race.scoring)
@@ -221,6 +227,8 @@ class App:
             self._sel_racer = 0
         if target is Screen.ROSTERS:
             self._refresh_rosters()
+        if target is Screen.SCHEDULE:
+            self._confirm_rebuild = False
         self.screen_state = target
         self._msg = ""
 
@@ -465,6 +473,8 @@ class App:
         if ev.key == pygame.K_b:
             self._build_qualifying()
             self._sched_sel = 0
+        elif ev.key == pygame.K_l:
+            self._append_late_entries()
         elif ev.key == pygame.K_DOWN:
             if heats:
                 self._sched_sel = min(self._sched_sel + 1, len(heats) - 1)
@@ -494,12 +504,48 @@ class App:
         if len(racers) < 2:
             self._msg = "Need at least 2 racers."
             return
+        # A full rebuild wipes every completed heat — make it a deliberate,
+        # two-step action once results exist. Use L to add late racers instead.
+        if self.db.phase_has_results(QUALIFYING) and not self._confirm_rebuild:
+            self._confirm_rebuild = True
+            self._msg = ("Rebuild ERASES all recorded results. Press B again to "
+                         "confirm, or L to add late racers without losing them.")
+            return
+        self._confirm_rebuild = False
         rows = build_schedule(
             [r.id for r in racers], self.cfg.race.lanes, self.runs_per_car
         )
         self.db.save_schedule(QUALIFYING, rows)
         self.db.clear_phase(FINAL)   # invalidate stale finals
         self._msg = f"Built {len(rows)} qualifying heats. Results cleared."
+
+    def _append_late_entries(self) -> None:
+        """Give racers added after the build their own catch-up heats.
+
+        Non-destructive: existing heats and results are untouched. Each newcomer
+        runs once per lane; filler lanes are drawn from the rest of the field
+        and count as ordinary runs.
+        """
+        self._confirm_rebuild = False
+        if not self.db.phase_has_schedule(QUALIFYING):
+            self._msg = "No schedule yet — press B to build one first."
+            return
+        scheduled = self.db.scheduled_racer_ids(QUALIFYING)
+        racers = self.db.list_racers()
+        new_ids = [r.id for r in racers if r.id not in scheduled]
+        existing_ids = [r.id for r in racers if r.id in scheduled]
+        if not new_ids:
+            self._msg = "No new racers to add — everyone is already scheduled."
+            return
+        if len(existing_ids) < self.cfg.race.lanes - 1:
+            self._msg = "Not enough existing racers to fill catch-up heats."
+            return
+        rows = build_late_entry(new_ids, existing_ids, self.cfg.race.lanes)
+        self.db.append_heats(QUALIFYING, rows)
+        self.db.clear_phase(FINAL)   # standings changed → re-seed finals later
+        n = len(new_ids)
+        who = "racer" if n == 1 else "racers"
+        self._msg = f"Added {len(rows)} catch-up heats for {n} late {who}."
 
     # ----- race -------------------------------------------------------------
     def _key_race(self, ev) -> None:
@@ -908,7 +954,7 @@ class App:
     def _draw_schedule(self) -> None:
         self._header(
             "Qualifying Schedule",
-            "↑/↓ select · Enter/R re-run a heat · B (re)build · Esc back",
+            "↑/↓ select · Enter/R re-run · B (re)build · L add late racers · Esc back",
         )
         heats = self.db.get_heats(QUALIFYING)
         racers = self.db.racers_by_id()
@@ -927,8 +973,24 @@ class App:
         T.draw_text(self.screen, self.fonts, f"{len(heats)} heats   ·   {msg}",
                     22, (40, 128), T.GOOD if perfect else T.ACCENT)
 
-        # column headers
+        # late-entry banner: racers added since the build have no heats yet
+        unscheduled = [
+            r for r in self.db.list_racers()
+            if r.id not in self.db.scheduled_racer_ids(QUALIFYING)
+        ]
         top = 168
+        if unscheduled:
+            names = ", ".join(f"#{r.car_number}" for r in unscheduled[:6])
+            more = "…" if len(unscheduled) > 6 else ""
+            T.draw_text(
+                self.screen, self.fonts,
+                f"⚠ {len(unscheduled)} new racer(s) not scheduled ({names}{more})"
+                " — press L to add catch-up heats",
+                18, (40, 152), T.ACCENT,
+            )
+            top = 196   # push the heat table down to make room for the banner
+
+        # column headers
         x0 = 40
         T.draw_text(self.screen, self.fonts, "Heat", 20, (x0, top), T.MUTED)
         for lane in range(self.cfg.race.lanes):

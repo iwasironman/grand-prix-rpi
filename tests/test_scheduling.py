@@ -24,6 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from pinewood.models import LaneResult, Racer  # noqa: E402
 from pinewood.ranking import compute_standings, heat_winner  # noqa: E402
 from pinewood.scheduling import (  # noqa: E402
+    build_late_entry,
     build_rotation,
     build_schedule,
     verify_fairness,
@@ -107,6 +108,59 @@ def test_reduced_runs_fewer_heats_and_distinct_lanes():
 def test_default_runs_per_car_matches_single_rotation():
     ids = list(range(10))
     assert build_schedule(ids, 4, runs_per_car=0) == build_rotation(ids, 4)
+
+
+def _assert_late_entry_valid(new, existing, lanes):
+    heats = build_late_entry(new, existing, lanes)
+    # exactly `lanes` heats per newcomer
+    assert len(heats) == len(new) * lanes
+    counts = verify_fairness(heats, lanes)
+    for nid in new:
+        # each newcomer runs once in every lane
+        assert counts.get(nid) == [1] * lanes, (new, nid, counts.get(nid))
+    for heat in heats:
+        cars = [c for c in heat if c is not None]
+        # no car appears twice in one heat
+        assert len(cars) == len(set(cars)), heat
+        # a newcomer is never a filler in another newcomer's heat is implied by
+        # the once-per-lane check above; here ensure fillers are existing cars
+        for c in cars:
+            assert c in new or c in existing
+
+
+def test_late_entry_single():
+    _assert_late_entry_valid([7], [1, 2, 3, 4, 5, 6], 4)
+
+
+def test_late_entry_multiple():
+    _assert_late_entry_valid([7, 8, 9], [1, 2, 3, 4, 5, 6], 4)
+
+
+def test_late_entry_fills_lanes_when_field_large_enough():
+    # with >= lanes-1 existing cars, every lane in every heat is filled
+    heats = build_late_entry([9], [1, 2, 3, 4, 5, 6, 7, 8], 4)
+    for heat in heats:
+        assert all(c is not None for c in heat), heat
+
+
+def test_late_entry_pads_when_field_too_small():
+    # only 2 existing cars, 4 lanes -> newcomer + 2 fillers, one lane None
+    heats = build_late_entry([3], [1, 2], 4)
+    counts = verify_fairness(heats, 4)
+    assert counts.get(3) == [1, 1, 1, 1]
+    assert any(None in heat for heat in heats)
+    for heat in heats:
+        cars = [c for c in heat if c is not None]
+        assert len(cars) == len(set(cars))
+
+
+def test_late_entry_fillers_spread_evenly():
+    # one newcomer, 8 existing, 4 lanes -> 3 fillers/heat * 4 heats = 12 slots
+    # across 8 cars: each existing car used once or twice, never 0-vs-3 skew
+    heats = build_late_entry([9], list(range(1, 9)), 4)
+    counts = verify_fairness(heats, 4)
+    filler_runs = [sum(counts.get(i, [0, 0, 0, 0])) for i in range(1, 9)]
+    assert max(filler_runs) - min(filler_runs) <= 1, filler_runs
 
 
 def test_ranking_by_average():

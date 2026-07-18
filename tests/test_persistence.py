@@ -118,5 +118,59 @@ def main():
     print("PERSISTENCE OK: roster, schedule, results and settings all resumed.")
 
 
+def test_late_entry_preserves_results_and_schedules_newcomer():
+    """Adding a racer mid-event must not erase completed heats."""
+    tmp = tempfile.mkdtemp()
+    app = App(_cfg(tmp))
+    for i, nm in enumerate(["A", "B", "C", "D", "E"], 1):
+        _add(app, nm, 200 + i)
+    app.screen_state = Screen.SCHEDULE
+    app._build_qualifying()
+    lanes = app.cfg.race.lanes
+    n_before = len(app.db.get_heats("qualifying"))
+    _run_one_heat(app)
+    assert app.db.phase_has_results("qualifying")
+    results_before = len(app.db.get_results("qualifying"))
+
+    # destructive rebuild is guarded once results exist: first B only arms
+    app.screen_state = Screen.SCHEDULE
+    app._build_qualifying()
+    assert app._confirm_rebuild, "rebuild should require confirmation"
+    assert app.db.phase_has_results("qualifying"), "guard must not erase results"
+    assert len(app.db.get_heats("qualifying")) == n_before, "guard must not rebuild"
+
+    # add a late racer; re-entering the schedule screen disarms the guard
+    _add(app, "Late", 999)
+    app._confirm_rebuild = False   # what _select_menu(SCHEDULE) does on entry
+    late = next(r for r in app.db.list_racers() if r.car_number == 999)
+    assert late.id not in app.db.scheduled_racer_ids("qualifying")
+
+    app._append_late_entries()
+
+    heats = app.db.get_heats("qualifying")
+    assert len(heats) == n_before + lanes, "should append one heat per lane"
+    assert heats[0].completed, "existing completed heat was lost"
+    assert len(app.db.get_results("qualifying")) == results_before, "results changed"
+    # newcomer now runs once in every lane
+    lane_counts = [0] * lanes
+    for h in heats:
+        for lane, rid in enumerate(h.lanes):
+            if rid == late.id:
+                lane_counts[lane] += 1
+    assert lane_counts == [1] * lanes, lane_counts
+    # seq numbering stays contiguous
+    assert [h.seq for h in heats] == list(range(1, len(heats) + 1))
+
+    # a second append with no new racers is a no-op
+    app._append_late_entries()
+    assert len(app.db.get_heats("qualifying")) == n_before + lanes
+
+    app.hw.cleanup()
+    app.db.close()
+    pygame.quit()
+
+
 if __name__ == "__main__":
     main()
+    test_late_entry_preserves_results_and_schedules_newcomer()
+    print("LATE-ENTRY OK: results preserved, newcomer scheduled once per lane.")

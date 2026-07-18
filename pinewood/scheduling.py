@@ -116,6 +116,59 @@ def build_finals(finalist_ids: list[int], lanes: int) -> list[list[int | None]]:
     return build_rotation(finalist_ids, lanes)
 
 
+def _distinct_fillers(
+    fillers: list[int], cursor: int, count: int, exclude: set[int]
+) -> tuple[list[int], int]:
+    """Pull the next `count` distinct fillers, cycling from `cursor`.
+
+    Returns the picks (fewer than `count` if the pool can't supply enough
+    distinct cars) and the advanced cursor so the round-robin continues evenly
+    across successive heats.
+    """
+    picked: list[int] = []
+    seen = set(exclude)
+    n = len(fillers)
+    scanned = 0
+    while len(picked) < count and scanned < n:
+        cand = fillers[cursor % n]
+        cursor += 1
+        scanned += 1
+        if cand not in seen:
+            picked.append(cand)
+            seen.add(cand)
+    return picked, cursor
+
+
+def build_late_entry(
+    new_ids: list[int], existing_ids: list[int], lanes: int
+) -> list[list[int | None]]:
+    """Catch-up heats for racers added after the schedule was built.
+
+    Each newcomer runs once in every lane (``lanes`` heats apiece) so their
+    lane-balanced average is directly comparable to the rest of the field. The
+    other lanes are back-filled from the already-scheduled field, spread as
+    evenly as possible via a persistent round-robin cursor; those filler runs
+    count as ordinary results. Newcomers never fill for one another (that would
+    break their own once-per-lane balance), so lanes go ``None`` only when the
+    existing field is too small to fill them with distinct cars.
+    """
+    heats: list[list[int | None]] = []
+    cursor = 0
+    for new_id in new_ids:
+        fillers = [rid for rid in existing_ids if rid != new_id]
+        for lane in range(lanes):
+            row: list[int | None] = [None] * lanes
+            row[lane] = new_id
+            other_lanes = [o for o in range(lanes) if o != lane]
+            picks, cursor = _distinct_fillers(
+                fillers, cursor, len(other_lanes), {new_id}
+            )
+            for o, rid in zip(other_lanes, picks):
+                row[o] = rid
+            heats.append(row)
+    return heats
+
+
 def verify_fairness(heats: list[list[int | None]], lanes: int) -> dict:
     """Diagnostic: how many times each racer appears in each lane.
 
